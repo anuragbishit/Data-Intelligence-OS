@@ -12,11 +12,11 @@ from app.db.session import get_db
 from app.schemas.analysis import AnalysisRequest, AnalysisRunRead, LLMCheckResponse
 from app.schemas.scenario import ScenarioRequest
 from app.services import analysis as svc
-from app.services.data_health import calculate_data_health
 from app.services import datasets as dataset_svc
 from app.services import projects as project_svc
 from app.services import scenarios as scenario_svc
 from app.services import storage
+from app.services.data_health import calculate_data_health
 
 router = APIRouter(tags=["analysis"])
 

@@ -173,7 +173,7 @@ class AgentRun(UUIDPrimaryKey, Timestamps, Base):
         back_populates="agent_runs"
     )
 
-    experiments: Mapped[list["Experiment"]] = relationship(
+    experiments: Mapped[list[Experiment]] = relationship(
         back_populates="agent_run",
         cascade="all, delete-orphan",
     )

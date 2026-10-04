@@ -1,7 +1,7 @@
+
 import numpy as np
 import pandas as pd
 import pytest
-from types import SimpleNamespace
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier
