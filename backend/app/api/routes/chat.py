@@ -1,0 +1,93 @@
+import uuid
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_user
+from app.db.models import MessageRole, User
+from app.db.session import get_db
+from app.services import chat as svc
+from app.services import datasets as dataset_svc
+from app.services import projects as project_svc
+
+router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"])
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    dataset_id: uuid.UUID | None = None
+
+
+class ChatMessage(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: uuid.UUID
+    role: MessageRole
+    content: str
+    created_at: datetime
+    # `alias` is used for BOTH reading and writing, so alias="metadata" made
+    # Pydantic read `msg.metadata` -- which on every SQLAlchemy declarative
+    # model is the MetaData registry, not this column. Every chat response
+    # failed validation with "Input should be a valid dictionary".
+    # validation_alias points at the ORM attribute; the field name is what
+    # goes out in JSON.
+    metadata: dict[str, Any] | None = Field(
+        default=None, validation_alias="metadata_"
+    )
+
+
+@router.get("", response_model=list[ChatMessage])
+async def history(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if await project_svc.get_project(db, project_id, user.id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    return await svc.get_history(db, project_id)
+
+
+@router.post("", response_model=ChatMessage, status_code=status.HTTP_201_CREATED)
+async def ask(
+    project_id: uuid.UUID,
+    payload: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Ask a question about the dataset.
+
+    The model chooses which tools to call. It cannot execute arbitrary code:
+    the tool vocabulary is fixed and every argument is schema-validated.
+    """
+    project = await project_svc.get_project(db, project_id, user.id)
+    if project is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+
+    datasets = await dataset_svc.list_datasets(db, project_id, user.id)
+    if not datasets:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Upload a table before asking questions about it."
+        )
+
+    if payload.dataset_id:
+        dataset = next((item for item in datasets if item.id == payload.dataset_id), None)
+        if dataset is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Dataset not found")
+    else:
+        dataset = datasets[0]
+
+    return await svc.ask(db, project, dataset, payload.message)
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def clear(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if await project_svc.get_project(db, project_id, user.id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    await svc.clear_history(db, project_id)
