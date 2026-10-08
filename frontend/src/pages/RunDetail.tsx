@@ -41,6 +41,7 @@ export function RunDetail() {
   const [dataHealth, setDataHealth] = useState<DataHealth | null>(null);
   const [chatDatasetId, setChatDatasetId] = useState<string | null>(null);
   const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
+  const [scenarioHistory, setScenarioHistory] = useState<ScenarioResult[]>([]);
 
   useEffect(() => {
     const loadRun = async () => {
@@ -48,8 +49,11 @@ export function RunDetail() {
         setDataHealth(null);
         setChatDatasetId(null);
         setScenarioResult(null);
+        setScenarioHistory([]); setScenarioHistory([]);
         const data = await api.getRun(runId);
         setRun(data);
+        if (data.output_payload?.latest_scenario) setScenarioResult(data.output_payload.latest_scenario);
+        if (data.output_payload?.scenario_history) setScenarioHistory(data.output_payload.scenario_history);
 
         try {
           let datasetId = data.dataset_id;
@@ -116,7 +120,7 @@ export function RunDetail() {
       const round = event.match(/\(r(\d+)\)/)?.[1];
       const attempt = out?.attempts.find((item) => item.round === Number(round));
       detail = out?.training
-        ? `${attempt ? `Round ${attempt.round}: ${attempt.best_model ?? "model not recorded"} scored ${attempt.primary_metric} ${attempt.primary_metric_value.toFixed(4)}. ` : ""}${out.training.best_model ?? "Model not recorded"} used ${out.training.features_used.length} features; ${out.training.n_train.toLocaleString()} training rows and ${out.training.n_test.toLocaleString()} test rows.${out.training.sampled_from ? ` Sampled from ${out.training.sampled_from.toLocaleString()} rows.` : ""}`
+        ? `${attempt ? `Round ${attempt.round}: ${attempt.best_model ?? "model not recorded"} scored ${attempt.primary_metric} ${attempt.primary_metric_value?.toFixed(4)}. ` : ""}${out.training.best_model ?? "Model not recorded"} used ${out.training.features_used.length} features; ${out.training.n_train.toLocaleString()} training rows and ${out.training.n_test.toLocaleString()} test rows.${out.training.sampled_from ? ` Sampled from ${out.training.sampled_from.toLocaleString()} rows.` : ""}`
         : "No training result was returned for this run.";
     } else if (node === "explain") {
       detail = out?.explanation
@@ -155,12 +159,20 @@ export function RunDetail() {
           <span className="tabular text-[12px] text-ink-faint">{out.plan.task_type}</span>
         )}
         {run.status === "succeeded" && (
-          <a
-            href={api.reportUrl(run.id)}
-            className="ml-auto rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
-          >
-            Download report
-          </a>
+          <div className="ml-auto flex gap-2">
+            <a
+              href={api.exportUrl(run.id)}
+              className="rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
+            >
+              Download Code & Model
+            </a>
+            <a
+              href={api.reportUrl(run.id)}
+              className="rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
+            >
+              Download report
+            </a>
+          </div>
         )}
       </div>
 
@@ -315,7 +327,7 @@ export function RunDetail() {
                 title="Quality checks"
                 aside={
                   <span className="tabular text-[12px] text-ink-faint">
-                    {quality.gate_metric} {quality.gate_value.toFixed(4)}
+                    {quality.gate_metric} {quality.gate_value?.toFixed(4)}
                   </span>
                 }
               >
@@ -374,7 +386,7 @@ export function RunDetail() {
                         {a.excluded_features.length ? a.excluded_features.join(", ") : "—"}
                       </td>
                       <td className="py-1.5 text-right">
-                        {a.gate_value !== undefined ? (
+                        {a.gate_value != null ? (
                           <>
                             <span className="text-ink-faint">{a.gate_metric} </span>
                             {a.gate_value.toFixed(4)}
@@ -384,7 +396,7 @@ export function RunDetail() {
                         )}
                       </td>
                       <td className="py-1.5 text-right text-ink-faint">
-                        {a.primary_metric} {a.primary_metric_value.toFixed(4)}
+                        {a.primary_metric} {a.primary_metric_value?.toFixed(4)}
                       </td>
                     </tr>
                   ))}
@@ -443,11 +455,12 @@ export function RunDetail() {
       {run.status === "succeeded" && (out?.training?.features_used.length ?? 0) > 0 && (
         <div id="decision-what-if" className="mt-7">
           <WhatIfScenario
+            history={scenarioHistory}
             key={run.id}
             runId={run.id}
             features={out!.training!.features_used}
             initialFeature={out?.explanation?.features[0]?.feature}
-            onResult={setScenarioResult}
+            onResult={(res) => { setScenarioResult(res); if (res) setScenarioHistory(prev => [...prev, res]); }}
           />
         </div>
       )}

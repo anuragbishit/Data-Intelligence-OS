@@ -75,7 +75,9 @@ class Explanation:
 # --------------------------------------------------------------------------
 # Name mapping
 # --------------------------------------------------------------------------
-def _source_column(encoded: str, numeric: list[str], categorical: list[str]) -> str:
+def _source_column(
+    encoded: str, numeric: list[str], categorical: list[str], datetimes: list[str], high_cardinality: list[str]
+) -> str:
     """Map an encoded feature name back to the original dataset column.
 
     ColumnTransformer emits 'num__age' and 'cat__region_North'. The latter is
@@ -83,7 +85,7 @@ def _source_column(encoded: str, numeric: list[str], categorical: list[str]) -> 
     called 'region_North', so we match against known names longest-first.
     """
     name = encoded
-    for prefix in ("num__", "cat__", "remainder__"):
+    for prefix in ("num__", "cat__", "dt__", "high_cat__", "remainder__"):
         if name.startswith(prefix):
             name = name[len(prefix):]
             break
@@ -94,11 +96,15 @@ def _source_column(encoded: str, numeric: list[str], categorical: list[str]) -> 
     if name.startswith("missingindicator_"):
         return f"{name[len('missingindicator_'):]} (was missing)"
 
-    if name in numeric or name in categorical:
+    if name in numeric or name in categorical or name in datetimes or name in high_cardinality:
         return name
     # One-hot: 'region_North' -> 'region'. Longest match wins so that
     # 'plan_type_A' resolves to 'plan_type', not 'plan'.
     for col in sorted(categorical, key=len, reverse=True):
+        if name.startswith(f"{col}_"):
+            return col
+    # Datetimes: 'order_date_year' -> 'order_date'
+    for col in sorted(datetimes, key=len, reverse=True):
         if name.startswith(f"{col}_"):
             return col
     return name
@@ -109,12 +115,14 @@ def _aggregate(
     scores: np.ndarray,
     numeric: list[str],
     categorical: list[str],
+    datetimes: list[str],
+    high_cardinality: list[str],
 ) -> tuple[list[FeatureImportance], list[FeatureImportance]]:
     """Fold one-hot columns back into their source column by summing."""
     totals: dict[str, float] = {}
     counts: dict[str, int] = {}
     for name, score in zip(encoded_names, scores, strict=False):
-        source = _source_column(name, numeric, categorical)
+        source = _source_column(name, numeric, categorical, datetimes, high_cardinality)
         totals[source] = totals.get(source, 0.0) + float(score)
         counts[source] = counts.get(source, 0) + 1
 
@@ -137,7 +145,11 @@ def _aggregate(
     return aggregated[:TOP_FEATURES_REPORTED], encoded[:TOP_FEATURES_REPORTED]
 
 
+def _unwrap(model: Any) -> Any:
+    return getattr(model, "regressor_", model)
+
 def _is_tree_model(estimator: Any) -> bool:
+    estimator = _unwrap(estimator)
     return any(t in type(estimator).__name__ for t in TREE_MODELS)
 
 
@@ -145,6 +157,7 @@ def _is_tree_model(estimator: Any) -> bool:
 # SHAP
 # --------------------------------------------------------------------------
 def _model_nodes(model: Any) -> int:
+    model = _unwrap(model)
     """Total decision nodes across the ensemble, or 0 if not a forest."""
     estimators = getattr(model, "estimators_", None)
     if estimators is None:
@@ -175,6 +188,7 @@ def _shap_importances(
     import shap  # imported lazily; absence must not break the app
 
     prep, model = pipeline["prep"], pipeline["model"]
+    model = _unwrap(model)
 
     nodes = _model_nodes(model)
     if nodes > SHAP_MAX_MODEL_NODES:
@@ -232,6 +246,8 @@ def explain(
     model_name: str,
     numeric: list[str],
     categorical: list[str],
+    datetimes: list[str],
+    high_cardinality: list[str],
 ) -> Explanation:
     """Explain a fitted pipeline. Blocking -- run in a thread."""
     # Probing the estimator must not itself be able to raise: explainability
@@ -244,7 +260,7 @@ def explain(
     if is_tree:
         try:
             names, scores, n = _shap_importances(pipeline, X)
-            aggregated, encoded = _aggregate(names, scores, numeric, categorical)
+            aggregated, encoded = _aggregate(names, scores, numeric, categorical, datetimes, high_cardinality)
             return Explanation(
                 method="shap", model_name=model_name, rows_explained=n,
                 features=aggregated, encoded_features=encoded,

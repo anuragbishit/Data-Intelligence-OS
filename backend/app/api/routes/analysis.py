@@ -2,6 +2,11 @@ import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
+import zipfile
+import tempfile
+import os
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -248,6 +253,87 @@ async def run_what_if_scenario(
             "The saved model or dataset file for this run is unavailable.",
         ) from exc
 
-    run.output_payload = {**output, "latest_scenario": scenario_result}
+    history = output.get("scenario_history", [])
+    history.append(scenario_result)
+    run.output_payload = {
+        **output,
+        "latest_scenario": scenario_result,
+        "scenario_history": history,
+    }
     await db.commit()
     return scenario_result
+
+@router.get("/analysis/{run_id}/export", response_class=FileResponse)
+async def export_model_and_code(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Export the trained model, cleaned dataset, and a starter Python script as a ZIP archive."""
+    run = await svc.get_run(db, run_id, user.id)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    if run.status != RunStatus.SUCCEEDED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Run did not complete.")
+
+    output = run.output_payload or {}
+    model_path = output.get("model_path")
+    if not model_path:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No model artifact found for this run.")
+
+    model_file = storage.resolve(model_path)
+    if not model_file.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Model artifact file missing.")
+
+    cleaned_file = storage.resolve(f"cleaned/{run.id}.csv")
+    dataset_file = cleaned_file if cleaned_file.exists() else None
+
+    training = output.get("training") or {}
+    plan = output.get("plan") or {}
+    target_column = plan.get("target_column")
+    task_type = training.get("task_type")
+
+    script = f"""# Data Intelligence OS - Model Export
+# Task: {task_type}
+# Target: {target_column}
+
+import pandas as pd
+import joblib
+
+print("Loading data...")
+df = pd.read_csv("dataset.csv")
+
+print("Loading model pipeline...")
+model = joblib.load("model.joblib")
+
+# The model is a full scikit-learn pipeline, including all necessary
+# imputation, encoding, and scaling steps.
+
+# Separate features from target
+X = df.drop(columns=["{target_column}"])
+y = df["{target_column}"]
+
+print("Making predictions on the dataset...")
+predictions = model.predict(X)
+
+print("First 10 predictions:")
+print(predictions[:10])
+"""
+
+    fd, temp_path = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
+    
+    with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(model_file, "model.joblib")
+        if dataset_file:
+            zf.write(dataset_file, "dataset.csv")
+        zf.writestr("predict.py", script)
+        zf.writestr("README.md", "# Model Export\n\nRun `python predict.py` to see the model in action. Ensure you have `pandas`, `joblib`, and `scikit-learn` installed.")
+
+    task = BackgroundTask(os.remove, temp_path)
+    return FileResponse(
+        path=temp_path,
+        filename=f"model-export-{run.id}.zip",
+        media_type="application/zip",
+        background=task,
+    )

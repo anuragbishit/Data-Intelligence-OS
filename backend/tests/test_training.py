@@ -32,7 +32,7 @@ def dataset(tmp_path):
 
 def test_feature_selection_drops_unusable_columns(dataset):
     _, profile = dataset
-    numeric, categorical, dropped = select_features(profile, "churn")
+    numeric, categorical, _, _, dropped = select_features(profile, "churn")
     dropped_cols = {d["column"] for d in dropped}
 
     assert "row_id" in dropped_cols       # identifier
@@ -117,7 +117,7 @@ def test_string_binary_column_routes_to_categorical(tmp_path):
     df.to_csv(path, index=False)
     profile = profile_file(path)
 
-    numeric, categorical, _ = select_features(profile, "label")
+    numeric, categorical, _, _, _ = select_features(profile, "label")
     assert "flag_text" in categorical
     assert "flag_num" in numeric
 
@@ -204,7 +204,7 @@ def test_boolean_columns_are_usable_features(tmp_path):
     df.to_csv(path, index=False)
     profile = profile_file(path)
 
-    numeric, categorical, dropped = select_features(profile, "label")
+    numeric, categorical, _, _, dropped = select_features(profile, "label")
     assert "flag" in numeric + categorical
     assert "flag" not in {d["column"] for d in dropped}
 

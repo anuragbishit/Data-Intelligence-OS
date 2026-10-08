@@ -35,7 +35,7 @@ def trained(tmp_path):
 def test_shap_used_for_tree_models(trained):
     result = explain(
         trained.fitted_pipelines["random_forest"], trained.X_test, trained.y_test,
-        "random_forest", trained.numeric_columns, trained.categorical_columns,
+        "random_forest", trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     assert result.method == "shap"
     assert result.rows_explained == len(trained.X_test)
@@ -44,7 +44,7 @@ def test_shap_used_for_tree_models(trained):
 def test_permutation_used_for_linear_models(trained):
     result = explain(
         trained.fitted_pipelines["logistic_regression"], trained.X_test, trained.y_test,
-        "logistic_regression", trained.numeric_columns, trained.categorical_columns,
+        "logistic_regression", trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     assert result.method == "permutation"
 
@@ -54,7 +54,7 @@ def test_real_driver_outranks_noise(trained, model):
     """The point of the whole module: importances must reflect reality."""
     result = explain(
         trained.fitted_pipelines[model], trained.X_test, trained.y_test,
-        model, trained.numeric_columns, trained.categorical_columns,
+        model, trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     ranks = {f.feature: f.rank for f in result.features}
     assert ranks["driver"] == 1
@@ -64,7 +64,7 @@ def test_real_driver_outranks_noise(trained, model):
 def test_one_hot_columns_fold_into_source_column(trained):
     result = explain(
         trained.fitted_pipelines["random_forest"], trained.X_test, trained.y_test,
-        "random_forest", trained.numeric_columns, trained.categorical_columns,
+        "random_forest", trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     names = {f.feature for f in result.features}
     assert "category" in names            # aggregated
@@ -76,7 +76,7 @@ def test_one_hot_columns_fold_into_source_column(trained):
 def test_ranks_are_dense_and_ordered(trained):
     result = explain(
         trained.fitted_pipelines["random_forest"], trained.X_test, trained.y_test,
-        "random_forest", trained.numeric_columns, trained.categorical_columns,
+        "random_forest", trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     assert [f.rank for f in result.features] == list(range(1, len(result.features) + 1))
     scores = [f.importance for f in result.features]
@@ -86,7 +86,7 @@ def test_ranks_are_dense_and_ordered(trained):
 def test_explanation_is_json_serialisable(trained):
     result = explain(
         trained.fitted_pipelines["random_forest"], trained.X_test, trained.y_test,
-        "random_forest", trained.numeric_columns, trained.categorical_columns,
+        "random_forest", trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     json.dumps(result.to_dict(), allow_nan=False)
 
@@ -115,8 +115,7 @@ def test_broken_pipeline_degrades_instead_of_raising(trained):
             raise RuntimeError("boom")
 
     result = explain(
-        Broken(), trained.X_test, trained.y_test, "x", [], []
-    )
+        Broken(), trained.X_test, trained.y_test, "x", [], [], [], [])
     assert isinstance(result, Explanation)
     assert result.method == "unavailable"
 
@@ -167,7 +166,7 @@ def test_oversized_model_falls_back_to_permutation(trained, monkeypatch):
     monkeypatch.setattr(ex, "SHAP_MAX_MODEL_NODES", 1)   # force the guard
     result = ex.explain(
         trained.fitted_pipelines["random_forest"], trained.X_test, trained.y_test,
-        "random_forest", trained.numeric_columns, trained.categorical_columns,
+        "random_forest", trained.numeric_columns, trained.categorical_columns, [], [], [], [],
     )
     assert result.method == "permutation"
     assert result.features
@@ -209,7 +208,7 @@ def test_missingness_indicator_is_reported_separately(tmp_path):
     # column (missingness included) and attributes the whole effect to it.
     result = explain(
         out.fitted_pipelines["random_forest"], out.X_test, out.y_test,
-        "random_forest", out.numeric_columns, out.categorical_columns,
+        "random_forest", out.numeric_columns, out.categorical_columns, [], [], [], [],
     )
     assert result.method == "shap"
     names = [f.feature for f in result.features]
@@ -247,7 +246,7 @@ def test_complete_data_produces_no_missingness_flag(tmp_path):
     out = train(path, profile, "label", "classification")
     result = explain(
         out.fitted_pipelines[out.best_model], out.X_test, out.y_test,
-        out.best_model, out.numeric_columns, out.categorical_columns,
+        out.best_model, out.numeric_columns, out.categorical_columns, [], [], [], [],
     )
     report = assess(out.to_dict(), result.to_dict())
     assert not any(c["name"] == "informative_missingness" for c in report.checks)

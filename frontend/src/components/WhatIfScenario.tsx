@@ -47,11 +47,13 @@ export function WhatIfScenario({
   features,
   initialFeature,
   onResult,
+  history,
 }: {
   runId: string;
   features: string[];
   initialFeature?: string;
   onResult?: (result: ScenarioResult | null) => void;
+  history?: ScenarioResult[];
 }) {
   const [feature, setFeature] = useState(
     initialFeature && features.includes(initialFeature) ? initialFeature : features[0] ?? "",
@@ -191,6 +193,29 @@ export function WhatIfScenario({
           </div>
         </div>
       )}
+
+      {history && history.length > 0 && (
+        <div className="mt-6 border-t border-weak pt-4">
+          <h4 className="text-[13px] font-semibold text-ink-soft mb-2">Scenario History</h4>
+          <div className="space-y-3">
+            {history.map((h, i) => (
+              <div key={i} className="bg-weak rounded p-3 text-[12px]">
+                <div className="font-medium text-ink">
+                  {h.feature_change.operation} {h.feature_change.feature} by {h.feature_change.requested_value}
+                </div>
+                <div className="text-ink-soft mt-1">
+                  {h.task_type === 'classification' ? (
+                     <span>Class distribution changed to {distributionText(h.scenario_result)}</span>
+                  ) : (
+                     <span>Mean prediction shifted by {numberText(h.impact.absolute_change)} ({numberText(h.impact.percentage_change, 2)}%)</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </Panel>
   );
 }

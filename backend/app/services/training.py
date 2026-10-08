@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.impute import SimpleImputer
@@ -31,7 +32,8 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, PowerTransformer, StandardScaler, TargetEncoder
+from sklearn.compose import TransformedTargetRegressor
 
 from app.core.logging import get_logger
 
@@ -110,14 +112,16 @@ def select_features(
     profile: dict[str, Any],
     target_column: str,
     exclude: list[str] | None = None,
-) -> tuple[list[str], list[str], list[dict[str, str]]]:
-    """Split columns into (numeric, categorical, dropped-with-reason).
+) -> tuple[list[str], list[str], list[str], list[str], list[dict[str, str]]]:
+    """Split columns into (numeric, categorical, datetimes, high_cardinality, dropped).
 
     Driven entirely by the profile, so the same decisions are reproducible
     and explainable -- the report can state why each column was excluded.
     """
     numeric: list[str] = []
     categorical: list[str] = []
+    datetimes: list[str] = []
+    high_cardinality: list[str] = []
     dropped: list[dict[str, str]] = []
     excluded = set(exclude or ())
 
@@ -144,19 +148,45 @@ def select_features(
                 categorical.append(name)
         elif semantic in {"categorical", "high_cardinality_categorical"}:
             if col["unique_count"] > 100:
-                dropped.append(
-                    {"column": name, "reason": f"{col['unique_count']} categories"}
-                )
+                high_cardinality.append(name)
             else:
                 categorical.append(name)
+        elif semantic in {"datetime", "datetime_string"}:
+            datetimes.append(name)
         else:
-            # datetime / datetime_string: real feature engineering is Phase 4.
             dropped.append({"column": name, "reason": f"unhandled type '{semantic}'"})
 
-    return numeric, categorical, dropped
+    return numeric, categorical, datetimes, high_cardinality, dropped
 
 
-def _build_preprocessor(numeric: list[str], categorical: list[str]) -> ColumnTransformer:
+class DatetimeEncoder(BaseEstimator, TransformerMixin):
+    """Extracts features from datetime columns."""
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(X)
+        out = pd.DataFrame(index=X.index)
+        for col in X.columns:
+            dt = pd.to_datetime(X[col], errors="coerce", format="mixed")
+            out[f"{col}_year"] = dt.dt.year.fillna(0).astype(float)
+            out[f"{col}_month"] = dt.dt.month.fillna(0).astype(float)
+            out[f"{col}_day"] = dt.dt.day.fillna(0).astype(float)
+            out[f"{col}_dow"] = dt.dt.dayofweek.fillna(0).astype(float)
+            out[f"{col}_is_weekend"] = dt.dt.dayofweek.isin([5, 6]).astype(float)
+        return out
+
+    def get_feature_names_out(self, input_features=None):
+        if input_features is None:
+            return None
+        names = []
+        for col in input_features:
+            names.extend([f"{col}_year", f"{col}_month", f"{col}_day", f"{col}_dow", f"{col}_is_weekend"])
+        return np.array(names, dtype=object)
+
+
+def _build_preprocessor(numeric: list[str], categorical: list[str], datetimes: list[str], high_cardinality: list[str]) -> ColumnTransformer:
     transformers = []
     if numeric:
         transformers.append((
@@ -183,6 +213,24 @@ def _build_preprocessor(numeric: list[str], categorical: list[str]) -> ColumnTra
                 ("encode", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
             ]),
             categorical,
+        ))
+    if datetimes:
+        transformers.append((
+            "dt",
+            Pipeline([
+                ("encode", DatetimeEncoder()),
+                ("scale", StandardScaler()),
+            ]),
+            datetimes,
+        ))
+    if high_cardinality:
+        transformers.append((
+            "high_cat",
+            Pipeline([
+                ("impute", SimpleImputer(strategy="most_frequent")),
+                ("encode", TargetEncoder(target_type="auto")),
+            ]),
+            high_cardinality,
         ))
     if not transformers:
         raise TrainingError("No usable feature columns remain after filtering.")
@@ -395,6 +443,8 @@ class SplitData:
     leakage: list[dict[str, Any]] = field(default_factory=list)
     sampled_from: int | None = None
     additive_leakage: dict[str, Any] | None = None
+    datetimes: list[str] = field(default_factory=list)
+    high_cardinality: list[str] = field(default_factory=list)
 
 
 def prepare_split(
@@ -432,8 +482,8 @@ def prepare_split(
         logger.info("Sampled for interactive run",
                     extra={"from": sampled_from, "to": len(df)})
 
-    numeric, categorical, dropped = select_features(profile, target_column, exclude)
-    features = numeric + categorical
+    numeric, categorical, datetimes, high_cardinality, dropped = select_features(profile, target_column, exclude)
+    features = numeric + categorical + datetimes + high_cardinality
     if not features:
         raise TrainingError(
             "No usable feature columns remain after filtering"
@@ -457,7 +507,9 @@ def prepare_split(
             dropped.append({"column": item["column"], "reason": item["reason"]})
         numeric = [c for c in numeric if c not in leaked]
         categorical = [c for c in categorical if c not in leaked]
-        features = numeric + categorical
+        datetimes = [c for c in datetimes if c not in leaked]
+        high_cardinality = [c for c in high_cardinality if c not in leaked]
+        features = numeric + categorical + datetimes + high_cardinality
         X = df[features]
         logger.warning("Target leakage removed", extra={"columns": sorted(leaked)})
 
@@ -491,7 +543,7 @@ def prepare_split(
         logger.warning("Additive leakage detected", extra={"r2": additive["r2"]})
 
     return SplitData(X_train, X_test, y_train, y_test, numeric, categorical,
-                     dropped, leakage, sampled_from, additive)
+                     dropped, leakage, sampled_from, additive, datetimes=datetimes, high_cardinality=high_cardinality)
 
 
 def train(
@@ -505,8 +557,8 @@ def train(
     split = prepare_split(path, profile, target_column, task_type, exclude)
     X_train, X_test = split.X_train, split.X_test
     y_train, y_test = split.y_train, split.y_test
-    numeric, categorical, dropped = split.numeric, split.categorical, split.dropped
-    features = numeric + categorical
+    numeric, categorical, datetimes, high_cardinality, dropped = split.numeric, split.categorical, split.datetimes, split.high_cardinality, split.dropped
+    features = numeric + categorical + datetimes + high_cardinality
 
     outcome = TrainingOutcome(
         task_type=task_type,
@@ -520,11 +572,22 @@ def train(
         additive_leakage=split.additive_leakage,
     )
 
+    skewness = float(y_train.skew()) if task_type == "regression" and pd.api.types.is_numeric_dtype(y_train) else 0.0
+    apply_transform = task_type == "regression" and abs(skewness) > 1.0
+    if apply_transform:
+        logger.info("Applying target transformation", extra={"skewness": skewness})
+
     fitted: dict[str, Pipeline] = {}
     for name, estimator in _candidate_models(task_type, len(X_train)).items():
+        if apply_transform:
+            estimator = TransformedTargetRegressor(
+                regressor=estimator,
+                transformer=PowerTransformer(method="yeo-johnson")
+            )
+            
         started = time.perf_counter()
         pipeline = Pipeline([
-            ("prep", _build_preprocessor(numeric, categorical)),
+            ("prep", _build_preprocessor(numeric, categorical, datetimes, high_cardinality)),
             ("model", estimator),
         ])
         try:

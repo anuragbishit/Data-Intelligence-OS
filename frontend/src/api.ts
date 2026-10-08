@@ -291,6 +291,8 @@ export interface RunOutput {
   reflection: { action: string; reasoning: string } | null;
   attempts: Attempt[];
   model_path: string | null;
+  latest_scenario?: ScenarioResult;
+  scenario_history?: ScenarioResult[];
 }
 
 export interface AnalysisRun {
@@ -331,10 +333,32 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: init?.body instanceof FormData ? undefined : { "Content-Type": "application/json" },
-    ...init,
-  });
+  const headers = new Headers(init?.headers);
+  if (!(init?.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  // Retrieve stored credentials if any
+  const auth = sessionStorage.getItem("basic_auth");
+  if (auth) {
+    headers.set("Authorization", `Basic ${auth}`);
+  }
+
+  let res = await fetch(`${BASE}${path}`, { ...init, headers });
+
+  if (res.status === 401) {
+    // If unauthorized, prompt the user for the admin password
+    const password = prompt("Admin Password required:");
+    if (password) {
+      // The username is ignored by our backend, just use 'admin'
+      const token = btoa(`admin:${password}`);
+      sessionStorage.setItem("basic_auth", token);
+      headers.set("Authorization", `Basic ${token}`);
+      // Retry the request
+      res = await fetch(`${BASE}${path}`, { ...init, headers });
+    }
+  }
+
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -391,6 +415,7 @@ export const api = {
     request<void>(`/projects/${projectId}/chat`, { method: "DELETE" }),
   getRun: (runId: string) => request<AnalysisRun>(`/analysis/${runId}`),
   reportUrl: (runId: string) => `${BASE}/analysis/${runId}/report.pdf`,
+  exportUrl: (runId: string) => `${BASE}/analysis/${runId}/export`,
   getDataHealth: (projectId: string, datasetId: string) =>
     request<DataHealth>(`/projects/${projectId}/datasets/${datasetId}/health`),
   runScenario: (runId: string, scenario: ScenarioRequest) =>

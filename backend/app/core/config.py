@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     # ---- App ----
-    APP_NAME: str = "Autonomous Data Analyst"
+    APP_NAME: str = "Data Intelligence OS"
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"
@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     DB_SSL: bool = False
     CORS_ORIGINS: str | None = None       # comma-separated; falls back to localhost
     DEMO_UPLOAD_TOKEN: str | None = None  # if set, uploads require this token
+    ADMIN_PASSWORD: str | None = None     # used for basic auth in production
 
 
     @computed_field

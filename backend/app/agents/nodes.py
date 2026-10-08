@@ -224,7 +224,7 @@ async def explain_node(state: AnalysisState) -> dict[str, Any]:
         )
         result = explain(
             pipeline, split.X_test, split.y_test, training["best_model"],
-            split.numeric, split.categorical,
+            split.numeric, split.categorical, split.datetimes, split.high_cardinality,
         )
         return result.to_dict()
 

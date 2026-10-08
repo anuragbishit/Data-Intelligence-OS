@@ -1,15 +1,15 @@
 """Shared FastAPI dependencies.
 
-`get_current_user` is the seam where real authentication lands in a later
-phase. Until then it resolves a single development user, created on first
-use. Everything downstream already takes a User, so swapping in JWT auth
-changes this function and nothing else.
+`get_current_user` handles authentication. In development, it uses a mock user. 
+In production, it enforces HTTP Basic Authentication using the ADMIN_PASSWORD.
 """
 from __future__ import annotations
 
 from fastapi import Depends, Header, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import secrets
 
 from app.core.config import settings
 from app.db.models import User
@@ -17,18 +17,34 @@ from app.db.session import get_db
 
 DEV_USER_EMAIL = "dev@localhost"
 
+security = HTTPBasic(auto_error=False)
 
-async def get_current_user(db: AsyncSession = Depends(get_db)) -> User:
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_db),
+    credentials: HTTPBasicCredentials | None = Depends(security)
+) -> User:
     if settings.ENVIRONMENT == "production":
-        # Fail loudly rather than silently granting access to a shared account.
-        raise RuntimeError(
-            "Authentication is not implemented. Refusing to serve production traffic."
-        )
+        if not settings.ADMIN_PASSWORD:
+            raise RuntimeError("ADMIN_PASSWORD must be set in production")
+        
+        is_valid = credentials and secrets.compare_digest(credentials.password, settings.ADMIN_PASSWORD)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        email = credentials.username
+        display_name = credentials.username
+    else:
+        email = DEV_USER_EMAIL
+        display_name = "Development User"
 
-    result = await db.execute(select(User).where(User.email == DEV_USER_EMAIL))
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
-        user = User(email=DEV_USER_EMAIL, display_name="Development User")
+        user = User(email=email, display_name=display_name)
         db.add(user)
         await db.commit()
         await db.refresh(user)

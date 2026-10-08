@@ -380,7 +380,7 @@ def build_report(
         leftMargin=20 * mm, rightMargin=20 * mm,
         topMargin=18 * mm, bottomMargin=18 * mm,
         title=f"{project_name} — analysis report",
-        author="Autonomous Data Analyst",
+        author="Data Intelligence OS",
     )
     content_width = doc.width
     story: list[Any] = []
