@@ -7,6 +7,7 @@ from starlette.background import BackgroundTask
 import zipfile
 import tempfile
 import os
+import json
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -16,8 +17,15 @@ from app.db.models import RunStatus, User
 from app.db.session import get_db
 from app.schemas.analysis import AnalysisRequest, AnalysisRunRead, LLMCheckResponse
 from app.schemas.scenario import ScenarioRequest
+from app.schemas.prediction import (
+    LivePredictionRequest,
+    LivePredictionResponse,
+    PredictionSchemaResponse,
+)
 from app.services import analysis as svc
 from app.services import datasets as dataset_svc
+from app.services import notebook as notebook_svc
+from app.services import prediction as prediction_svc
 from app.services import projects as project_svc
 from app.services import scenarios as scenario_svc
 from app.services import storage
@@ -337,3 +345,118 @@ print(predictions[:10])
         media_type="application/zip",
         background=task,
     )
+
+
+@router.get("/analysis/{run_id}/prediction-schema", response_model=PredictionSchemaResponse)
+async def get_prediction_schema(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Retrieve schema and default values for interactive single-record prediction."""
+    run = await svc.get_run(db, run_id, user.id)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    if run.status != RunStatus.SUCCEEDED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Run did not complete.")
+
+    output = run.output_payload or {}
+    dataset = await dataset_svc.get_dataset(db, run.dataset_id, user.id) if run.dataset_id else None
+    profile = dataset.profile if dataset else None
+
+    schema_data = prediction_svc.build_prediction_schema(output, profile)
+    return PredictionSchemaResponse(
+        run_id=str(run.id),
+        target_column=schema_data["target_column"],
+        task_type=schema_data["task_type"],
+        features=schema_data["features"],
+    )
+
+
+@router.post("/analysis/{run_id}/predict", response_model=LivePredictionResponse)
+async def predict_single_record(
+    run_id: uuid.UUID,
+    request: LivePredictionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Evaluate live single-record prediction using the trained model pipeline."""
+    run = await svc.get_run(db, run_id, user.id)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    if run.status != RunStatus.SUCCEEDED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Run did not complete.")
+
+    output = run.output_payload or {}
+    model_path = output.get("model_path")
+    if not model_path:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No model artifact found for this run.")
+
+    dataset = await dataset_svc.get_dataset(db, run.dataset_id, user.id) if run.dataset_id else None
+    profile = dataset.profile if dataset else None
+
+    try:
+        result = prediction_svc.predict_single(
+            model_path=model_path,
+            output_payload=output,
+            features=request.features,
+            dataset_profile=profile,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Model artifact file missing.") from exc
+    except Exception as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Prediction failed: {exc}") from exc
+
+    return LivePredictionResponse(
+        run_id=str(run.id),
+        task_type=result["task_type"],
+        target_column=result["target_column"],
+        prediction=result["prediction"],
+        prediction_display=result["prediction_display"],
+        confidence=result["confidence"],
+        probabilities=result["probabilities"],
+        feature_contributions=result["feature_contributions"],
+    )
+
+
+@router.get("/analysis/{run_id}/notebook", response_class=FileResponse)
+async def download_notebook(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Download an auto-generated reproducible Jupyter Notebook reproducing this analysis."""
+    run = await svc.get_run(db, run_id, user.id)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    if run.status != RunStatus.SUCCEEDED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Run did not complete.")
+
+    project = await project_svc.get_project(db, run.project_id, user.id)
+    project_name = project.name if project else "Analysis"
+
+    dataset = await dataset_svc.get_dataset(db, run.dataset_id, user.id) if run.dataset_id else None
+    dataset_name = dataset.original_filename if dataset else "dataset.csv"
+
+    output = run.output_payload or {}
+    nb_dict = notebook_svc.generate_analysis_notebook(
+        project_name=project_name,
+        run_id=str(run.id),
+        dataset_name=dataset_name,
+        output_payload=output,
+    )
+
+    fd, temp_path = tempfile.mkstemp(suffix=".ipynb")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(nb_dict, f, indent=2)
+
+    safe_title = "".join(c if c.isalnum() else "_" for c in project_name.lower()).strip("_")
+    filename = f"{safe_title}_analysis_{run.id}.ipynb"
+    task = BackgroundTask(os.remove, temp_path)
+    return FileResponse(
+        path=temp_path,
+        filename=filename,
+        media_type="application/x-ipynb+json",
+        background=task,
+    )
+

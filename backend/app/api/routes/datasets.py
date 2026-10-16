@@ -8,7 +8,9 @@ from app.db.models import User
 from app.db.session import get_db
 from app.schemas.datasets import DatasetRead, DatasetSummary, DatasetUploadResponse
 from app.services import datasets as svc
+from app.services import eda as eda_svc
 from app.services import projects as project_svc
+from app.services import storage
 from app.services.data_health import calculate_data_health
 from app.services.profiling import DatasetParseError
 from app.services.storage import UnsupportedFileType, UploadTooLarge
@@ -111,6 +113,31 @@ async def get_data_health(
     profile = dataset.profile or {}
 
     return calculate_data_health(profile)
+
+
+@router.get("/{dataset_id}/eda")
+async def get_dataset_eda(
+    project_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Calculate interactive Exploratory Data Analysis (EDA) metrics."""
+    dataset = await svc.get_dataset(db, dataset_id, user.id)
+    if dataset is None or dataset.project_id != project_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dataset not found")
+
+    file_path = storage.resolve(dataset.storage_path)
+    if not file_path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dataset file missing from storage.")
+
+    try:
+        return eda_svc.calculate_eda(file_path)
+    except Exception as exc:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Failed to calculate EDA: {exc}",
+        ) from exc
 
 
 @router.delete("/{dataset_id}", status_code=status.HTTP_204_NO_CONTENT)

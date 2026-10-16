@@ -76,8 +76,14 @@ class Explanation:
 # Name mapping
 # --------------------------------------------------------------------------
 def _source_column(
-    encoded: str, numeric: list[str], categorical: list[str], datetimes: list[str], high_cardinality: list[str]
+    encoded: str,
+    numeric: list[str],
+    categorical: list[str],
+    datetimes: list[str] | None = None,
+    high_cardinality: list[str] | None = None,
 ) -> str:
+    datetimes = datetimes or []
+    high_cardinality = high_cardinality or []
     """Map an encoded feature name back to the original dataset column.
 
     ColumnTransformer emits 'num__age' and 'cat__region_North'. The latter is
@@ -246,9 +252,12 @@ def explain(
     model_name: str,
     numeric: list[str],
     categorical: list[str],
-    datetimes: list[str],
-    high_cardinality: list[str],
+    datetimes: list[str] | None = None,
+    high_cardinality: list[str] | None = None,
+    *extra_args: Any,
 ) -> Explanation:
+    datetimes = datetimes or []
+    high_cardinality = high_cardinality or []
     """Explain a fitted pipeline. Blocking -- run in a thread."""
     # Probing the estimator must not itself be able to raise: explainability
     # is an enhancement, and nothing here may take down a completed run.

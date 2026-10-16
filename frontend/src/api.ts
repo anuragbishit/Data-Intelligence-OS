@@ -332,6 +332,90 @@ export class ApiError extends Error {
   }
 }
 
+export interface FeatureSchemaItem {
+  name: string;
+  type: "numeric" | "categorical";
+  default_value: number | string;
+  min_value?: number | null;
+  max_value?: number | null;
+  step?: number | null;
+  options?: string[] | null;
+}
+
+export interface PredictionSchemaResponse {
+  run_id: string;
+  target_column: string;
+  task_type: "classification" | "regression";
+  features: FeatureSchemaItem[];
+}
+
+export interface ClassProbability {
+  class_name: string;
+  probability: number;
+  percentage: number;
+}
+
+export interface FeatureContribution {
+  feature: string;
+  value: unknown;
+  baseline_value: unknown;
+  contribution: number;
+  direction: "positive" | "negative" | "neutral";
+}
+
+export interface LivePredictionResponse {
+  run_id: string;
+  task_type: "classification" | "regression";
+  target_column: string;
+  prediction: unknown;
+  prediction_display: string;
+  confidence?: number | null;
+  probabilities?: ClassProbability[] | null;
+  feature_contributions: FeatureContribution[];
+}
+
+export interface MissingnessItem {
+  column: string;
+  missing_count: number;
+  missing_pct: number;
+  present_pct: number;
+  dtype: string;
+}
+
+export interface CorrelationCell {
+  x: string;
+  y: string;
+  correlation: number;
+}
+
+export interface NumericDistribution {
+  type: "numeric";
+  bins: { bin_start: number; bin_end: number; count: number; label: string }[];
+  min: number;
+  max: number;
+  mean: number;
+  median: number;
+  std: number;
+  total_count: number;
+}
+
+export interface CategoricalDistribution {
+  type: "categorical";
+  categories: { name: string; count: number; pct: number }[];
+  total_unique: number;
+  total_count: number;
+}
+
+export interface EdaResponse {
+  rows: number;
+  columns: number;
+  sampled: boolean;
+  missingness: MissingnessItem[];
+  correlation_columns: string[];
+  correlation_matrix: CorrelationCell[];
+  distributions: Record<string, NumericDistribution | CategoricalDistribution>;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!(init?.body instanceof FormData)) {
@@ -423,5 +507,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify(scenario),
     }),
-
+  getPredictionSchema: (runId: string) =>
+    request<PredictionSchemaResponse>(`/analysis/${runId}/prediction-schema`),
+  predictSingle: (runId: string, features: Record<string, unknown>) =>
+    request<LivePredictionResponse>(`/analysis/${runId}/predict`, {
+      method: "POST",
+      body: JSON.stringify({ features }),
+    }),
+  notebookUrl: (runId: string) => `${BASE}/analysis/${runId}/notebook`,
+  getDatasetEda: (projectId: string, datasetId: string) =>
+    request<EdaResponse>(`/projects/${projectId}/datasets/${datasetId}/eda`),
 };

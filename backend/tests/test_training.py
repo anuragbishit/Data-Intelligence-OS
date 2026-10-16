@@ -32,12 +32,12 @@ def dataset(tmp_path):
 
 def test_feature_selection_drops_unusable_columns(dataset):
     _, profile = dataset
-    numeric, categorical, _, _, dropped = select_features(profile, "churn")
+    numeric, categorical, datetimes, _, dropped = select_features(profile, "churn")
     dropped_cols = {d["column"] for d in dropped}
 
     assert "row_id" in dropped_cols       # identifier
     assert "currency" in dropped_cols     # constant
-    assert "joined" in dropped_cols       # datetime, not engineered yet
+    assert "joined" in datetimes          # datetime engineered feature
     assert "churn" not in numeric + categorical + list(dropped_cols)
     assert set(numeric) == {"tenure", "charges"}
     assert categorical == ["plan"]

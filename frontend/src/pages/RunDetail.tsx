@@ -8,6 +8,8 @@ import DataHealthScore from "../components/DataHealthScore";
 import AIAnalysisTrace from "../components/AIAnalysisTrace";
 import { DecisionIntelligenceDashboard } from "../components/DecisionIntelligenceDashboard";
 import { WhatIfScenario } from "../components/WhatIfScenario";
+import { LivePredictionPlayground } from "../components/LivePredictionPlayground";
+import { VisualEDA } from "../components/VisualEDA";
 import { QualityChecks, VerdictBadge } from "../components/Verdict";
 import { SkeletonCard } from "../components/Skeleton";
 import { ErrorNote, Metric, Panel } from "../components/shell";
@@ -49,7 +51,7 @@ export function RunDetail() {
         setDataHealth(null);
         setChatDatasetId(null);
         setScenarioResult(null);
-        setScenarioHistory([]); setScenarioHistory([]);
+        setScenarioHistory([]);
         const data = await api.getRun(runId);
         setRun(data);
         if (data.output_payload?.latest_scenario) setScenarioResult(data.output_payload.latest_scenario);
@@ -165,6 +167,12 @@ export function RunDetail() {
               className="rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
             >
               Download Code & Model
+            </a>
+            <a
+              href={api.notebookUrl(run.id)}
+              className="rounded border border-verified/50 bg-verified-wash/40 px-3 py-1.5 text-[13px] font-medium text-verified hover:bg-verified-wash"
+            >
+              Download Notebook (.ipynb)
             </a>
             <a
               href={api.reportUrl(run.id)}
@@ -453,6 +461,12 @@ export function RunDetail() {
       </div>
 
       {run.status === "succeeded" && (out?.training?.features_used.length ?? 0) > 0 && (
+        <div id="decision-live-prediction" className="mt-7">
+          <LivePredictionPlayground runId={run.id} />
+        </div>
+      )}
+
+      {run.status === "succeeded" && (out?.training?.features_used.length ?? 0) > 0 && (
         <div id="decision-what-if" className="mt-7">
           <WhatIfScenario
             history={scenarioHistory}
@@ -462,6 +476,12 @@ export function RunDetail() {
             initialFeature={out?.explanation?.features[0]?.feature}
             onResult={(res) => { setScenarioResult(res); if (res) setScenarioHistory(prev => [...prev, res]); }}
           />
+        </div>
+      )}
+
+      {chatDatasetId && (
+        <div id="decision-eda-charts" className="mt-7">
+          <VisualEDA projectId={run.project_id} datasetId={chatDatasetId} />
         </div>
       )}
 

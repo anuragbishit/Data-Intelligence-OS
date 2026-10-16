@@ -10,6 +10,7 @@ import {
 import { Chat } from "../components/Chat";
 import { RunProgress } from "../components/RunProgress";
 import { SkeletonCard, SkeletonLines } from "../components/Skeleton";
+import { VisualEDA } from "../components/VisualEDA";
 import { Button, Empty, ErrorNote, Metric, Panel } from "../components/shell";
 
 const SEVERITY = {
@@ -239,6 +240,12 @@ export function ProjectDetail() {
           </Panel>
         </div>
       </div>
+
+      {dataset && (
+        <div className="mt-8">
+          <VisualEDA projectId={projectId} datasetId={dataset.id} />
+        </div>
+      )}
     </div>
   );
 }
