@@ -146,24 +146,44 @@ export function RunDetail() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <Link
-        to={`/projects/${run.project_id}`}
-        className="tabular text-[12px] text-ink-faint hover:text-ink"
-      >
-        ← back to project
-      </Link>
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-2 text-[12px] text-slate-500 mb-2">
+        <Link to={`/projects/${run.project_id}`} className="hover:text-slate-900 transition-colors flex items-center gap-1 font-medium">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Project
+        </Link>
+        <span>/</span>
+        <span className="font-semibold text-slate-800 truncate">Run {run.id.slice(0, 8)}</span>
+      </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h1 className="text-[22px] font-bold tracking-tight">
-          {out?.plan?.target_column ?? "Analysis"}
-        </h1>
-        {quality && <VerdictBadge verdict={quality.verdict} />}
-        {out?.plan && (
-          <span className="tabular text-[12px] text-ink-faint">{out.plan.task_type}</span>
-        )}
+      {/* Main Header */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200">
+        <div className="flex flex-wrap items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-teal-400 shadow-sm">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-[24px] sm:text-[26px] font-extrabold tracking-tight text-slate-900">
+                {out?.plan?.target_column ?? "Analysis"}
+              </h1>
+              {quality && <VerdictBadge verdict={quality.verdict} />}
+            </div>
+            <div className="flex items-center gap-2 text-[12px] text-slate-500">
+              <span className="capitalize font-semibold text-slate-700">{out?.plan?.task_type ?? "Autonomous model"}</span>
+              <span>·</span>
+              <span>Run ID: <code className="font-mono text-slate-600">{run.id.slice(0, 8)}</code></span>
+            </div>
+          </div>
+        </div>
+
         {run.status === "succeeded" && (
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => {
                 setShowDeployApi(true);
@@ -171,27 +191,30 @@ export function RunDetail() {
                   document.getElementById("decision-deploy-api")?.scrollIntoView({ behavior: "smooth" });
                 }, 50);
               }}
-              className="rounded bg-ink px-3 py-1.5 text-[13px] font-medium text-surface hover:opacity-90 transition-all flex items-center gap-1.5 shadow-sm"
+              className="rounded-lg bg-teal-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-teal-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>⚡</span> {showDeployApi ? "Live REST API" : "Deploy as API"}
             </button>
             <a
-              href={api.exportUrl(run.id)}
-              className="rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
+              href={api.notebookUrl(run.id)}
+              className="rounded-lg border border-teal-500/30 bg-teal-50/60 px-3 py-2 text-[13px] font-medium text-teal-800 hover:bg-teal-100 transition-colors flex items-center gap-1.5"
             >
-              Download Code & Model
+              <span>📓</span>
+              <span>Notebook (.ipynb)</span>
             </a>
             <a
-              href={api.notebookUrl(run.id)}
-              className="rounded border border-verified/50 bg-verified-wash/40 px-3 py-1.5 text-[13px] font-medium text-verified hover:bg-verified-wash"
+              href={api.exportUrl(run.id)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
-              Download Notebook (.ipynb)
+              <span>📦</span>
+              <span>Code & Model</span>
             </a>
             <a
               href={api.reportUrl(run.id)}
-              className="rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
-              Download report
+              <span>📄</span>
+              <span>Report</span>
             </a>
           </div>
         )}
@@ -202,18 +225,18 @@ export function RunDetail() {
       )}
 
       {!!out?.training?.leaked_features?.length && (
-        <div className="mt-5 rounded-md border border-weak/40 bg-weak-wash px-4 py-3">
-          <p className="text-[13px] font-semibold text-weak">
-            Columns removed for restating the target
+        <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3.5 shadow-2xs">
+          <p className="text-[13px] font-bold text-amber-900 flex items-center gap-1.5">
+            <span>🛡️</span> Columns removed for restating the target (Data Leakage Prevented)
           </p>
-          <ul className="mt-1.5 space-y-1">
+          <ul className="mt-2 space-y-1">
             {out.training.leaked_features.map((f) => (
-              <li key={f.column} className="text-[13px] leading-snug text-ink-soft">
-                <span className="tabular font-medium">{f.column}</span> — {f.reason}
+              <li key={f.column} className="text-[13px] leading-snug text-amber-800">
+                <span className="tabular font-semibold text-amber-950">{f.column}</span> — {f.reason}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[12px] leading-snug text-ink-soft">
+          <p className="mt-2 text-[12px] leading-snug text-amber-700">
             Scores below come from a model trained without them. Left in, they
             would have produced a perfect score and learned nothing.
           </p>
@@ -221,19 +244,19 @@ export function RunDetail() {
       )}
 
       {out?.training?.additive_leakage && (
-        <div className="mt-5 rounded-md border border-failed/40 bg-failed-wash px-4 py-3">
-          <p className="text-[13px] font-semibold text-failed">
-            The target is derived from its own columns
+        <div className="mt-5 rounded-xl border border-rose-300 bg-rose-50/80 px-4 py-3.5 shadow-2xs">
+          <p className="text-[13px] font-bold text-rose-900 flex items-center gap-1.5">
+            <span>⚠️</span> The target is derived from its own columns
           </p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-rose-800">
             {out.training.additive_leakage.reason}
           </p>
-          <p className="tabular mt-2 text-[12px] text-ink-soft">
+          <p className="tabular mt-2 text-[12px] font-mono text-rose-900">
             {out.training.additive_leakage.contributors
               .map((c) => `${c.column} ×${c.coefficient.toFixed(3)}`)
               .join("  ·  ")}
           </p>
-          <p className="mt-2 text-[12px] leading-snug text-ink-faint">
+          <p className="mt-2 text-[12px] leading-snug text-rose-700">
             Coefficients near 1.0 mean the target is a sum. The score below is
             real but meaningless — remove the component columns, or predict
             something not derived from them.
@@ -242,7 +265,7 @@ export function RunDetail() {
       )}
 
       {out?.training?.sampled_from && (
-        <p className="tabular mt-4 text-[12px] text-ink-faint">
+        <p className="tabular mt-4 text-[12px] text-slate-500">
           Sampled {out.training.n_train + out.training.n_test} rows from{" "}
           {out.training.sampled_from.toLocaleString()} to keep the run interactive.
         </p>
@@ -268,9 +291,15 @@ export function RunDetail() {
       </div>
 
       {out?.summary && (
-        <p id="decision-analysis-summary" className="rise mt-5 max-w-3xl border-l-2 border-verified pl-4 text-[15px] leading-relaxed text-ink">
-          {out.summary}
-        </p>
+        <div id="decision-analysis-summary" className="rise mt-6 rounded-xl border border-teal-500/30 bg-teal-50/40 p-5 shadow-2xs">
+          <div className="flex items-center gap-2 mb-1.5 text-[12px] font-bold uppercase tracking-wider text-teal-800">
+            <span>✨</span>
+            <span>Autonomous Executive Summary</span>
+          </div>
+          <p className="text-[15px] leading-relaxed text-slate-800">
+            {out.summary}
+          </p>
+        </div>
       )}
 
       <div className="mt-7 grid gap-5 lg:grid-cols-[250px_1fr]">

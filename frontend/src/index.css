@@ -9,29 +9,30 @@
    coloured for ornament.
    --------------------------------------------------------------- */
 @theme {
-  --color-paper: #f6f7f9;
+  --color-paper: #f8fafc;
   --color-surface: #ffffff;
-  --color-rule: #dde2ea;
-  --color-rule-strong: #c3ccd9;
+  --color-rule: #e2e8f0;
+  --color-rule-strong: #cbd5e1;
 
-  --color-ink: #14213a;
-  --color-ink-soft: #4a5773;
-  --color-ink-faint: #8390a8;
+  --color-ink: #0f172a;
+  --color-ink-soft: #475569;
+  --color-ink-faint: #64748b;
 
-  --color-verified: #0f766e;
-  --color-verified-wash: #e6f2f1;
-  --color-weak: #a4600a;
-  --color-weak-wash: #fbf1e2;
-  --color-failed: #a81c40;
-  --color-failed-wash: #fbe9ee;
-  --color-inert: #6b7794;
+  --color-verified: #0d9488;
+  --color-verified-wash: #f0fdfa;
+  --color-weak: #d97706;
+  --color-weak-wash: #fffbeb;
+  --color-failed: #e11d48;
+  --color-failed-wash: #fff1f2;
+  --color-inert: #64748b;
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html {
   background: var(--color-paper);
+  color-scheme: light;
 }
 
 /* ---------------------------------------------------------------

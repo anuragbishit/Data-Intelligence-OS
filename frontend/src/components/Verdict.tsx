@@ -1,17 +1,19 @@
 import type { Quality } from "../api";
 
 const TONE = {
-  strong: { label: "Strong", cls: "bg-verified-wash text-verified border-verified/30" },
-  acceptable: { label: "Acceptable", cls: "bg-verified-wash text-verified border-verified/30" },
-  weak: { label: "Weak", cls: "bg-weak-wash text-weak border-weak/30" },
+  strong: { label: "Strong", cls: "bg-teal-50 text-teal-700 border-teal-200" },
+  acceptable: { label: "Acceptable", cls: "bg-teal-50 text-teal-700 border-teal-200" },
+  weak: { label: "Weak", cls: "bg-amber-50 text-amber-700 border-amber-200" },
 } as const;
 
 export function VerdictBadge({ verdict }: { verdict: Quality["verdict"] }) {
   const t = TONE[verdict] ?? TONE.weak;
+  const dotColor = verdict === "strong" || verdict === "acceptable" ? "bg-teal-500" : "bg-amber-500";
   return (
     <span
-      className={`inline-flex items-center rounded border px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wider ${t.cls}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[11px] font-bold uppercase tracking-wider shadow-2xs ${t.cls}`}
     >
+      <span className={`h-1.5 w-1.5 rounded-full ${dotColor} ${verdict === "strong" ? "animate-pulse" : ""}`} />
       {t.label}
     </span>
   );
@@ -26,31 +28,35 @@ export function VerdictBadge({ verdict }: { verdict: Quality["verdict"] }) {
  */
 export function QualityChecks({ quality }: { quality: Quality }) {
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {quality.checks.map((c) => {
-        // Rose means the verdict was driven down. Amber means something was
-        // found and dealt with -- a good outcome, not a failure.
-        const tone = c.passed
-          ? "bg-verified"
+        const toneBg = c.passed
+          ? "bg-teal-50 border-teal-200 text-teal-800"
           : c.gating === false
-            ? "bg-weak"
-            : "bg-failed";
-        const label = c.passed ? null : c.gating === false ? "found" : "failed";
+            ? "bg-amber-50 border-amber-200 text-amber-800"
+            : "bg-rose-50 border-rose-200 text-rose-800";
+        const dotColor = c.passed
+          ? "bg-teal-500"
+          : c.gating === false
+            ? "bg-amber-500"
+            : "bg-rose-500";
+        const label = c.passed ? "Passed" : c.gating === false ? "Warning" : "Failed";
+
         return (
-        <li key={c.name} className="flex gap-2.5">
-          <span aria-hidden className={`mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full ${tone}`} />
-          <div className="min-w-0">
-            <span className="tabular text-[11px] uppercase tracking-wider text-ink-faint">
-              {c.name.replace(/_/g, " ")}
-              {label && (
-                <span className={c.gating === false ? "ml-1.5 text-weak" : "ml-1.5 text-failed"}>
+          <li key={c.name} className={`flex items-start gap-3 rounded-lg border p-2.5 ${toneBg}`}>
+            <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="tabular text-[12px] font-bold uppercase tracking-wider">
+                  {c.name.replace(/_/g, " ")}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
                   {label}
                 </span>
-              )}
-            </span>
-            <p className="text-[13px] leading-snug text-ink-soft">{c.detail}</p>
-          </div>
-        </li>
+              </div>
+              <p className="mt-0.5 text-[12px] leading-relaxed opacity-90">{c.detail}</p>
+            </div>
+          </li>
         );
       })}
     </ul>

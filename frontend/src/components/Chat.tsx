@@ -52,35 +52,37 @@ export function Chat({ projectId, hasDataset, datasetId, embedded = false }: Cha
   }
 
   return (
-    <section className={embedded ? "flex h-[400px] flex-col" : "flex h-[480px] flex-col rounded-md border border-rule bg-surface"}>
-      <header className={`flex items-baseline justify-between border-b border-rule py-2.5 ${embedded ? "" : "px-4"}`}>
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
-          Ask about this data
-        </h2>
+    <section className={embedded ? "flex h-[400px] flex-col" : "flex h-[480px] flex-col rounded-xl border border-slate-200/90 bg-white shadow-xs"}>
+      <header className={`flex items-center justify-between border-b border-slate-100 py-3 ${embedded ? "" : "px-5"}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-[14px]">💬</span>
+          <h2 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">
+            Conversational Data Copilot
+          </h2>
+        </div>
         {messages.length > 0 && (
           <button
             onClick={() => api.chatClear(projectId).then(() => setMessages([]))}
-            className="text-[12px] text-ink-faint hover:text-ink"
+            className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            clear
+            Clear History
           </button>
         )}
       </header>
 
-      <div className={`flex-1 space-y-3.5 overflow-y-auto py-3.5 ${embedded ? "" : "px-4"}`}>
+      <div className={`flex-1 space-y-3.5 overflow-y-auto py-4 ${embedded ? "" : "px-5"}`}>
         {messages.length === 0 && (
           <div>
-            <p className="text-[13px] leading-relaxed text-ink-soft">
-              Questions are answered by computing real values from your table —
-              never estimated. Try one of these:
+            <p className="text-[13px] leading-relaxed text-slate-600">
+              Ask natural-language questions about this table. Computations are verified directly against dataset rows.
             </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
                   disabled={!hasDataset}
-                  className="rounded border border-rule-strong px-2 py-1 text-[12px] text-ink-soft hover:bg-paper disabled:opacity-40"
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] text-slate-700 hover:border-slate-300 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
                 >
                   {s}
                 </button>
@@ -92,38 +94,43 @@ export function Chat({ projectId, hasDataset, datasetId, embedded = false }: Cha
         {messages.map((m) => (
           <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
             <div
-              className={`inline-block max-w-[92%] rounded-md px-3 py-2 text-left text-[13px] leading-relaxed ${
+              className={`inline-block max-w-[90%] rounded-2xl px-4 py-2.5 text-left text-[13px] leading-relaxed shadow-2xs ${
                 m.role === "user"
-                  ? "bg-verified-wash text-ink"
-                  : "border border-rule bg-paper text-ink-soft"
+                  ? "rounded-tr-xs bg-slate-900 text-white"
+                  : "rounded-tl-xs border border-slate-200 bg-slate-50 text-slate-800"
               }`}
             >
               {m.content}
             </div>
             {!!m.metadata?.tools?.length && (
-              <div className="tabular mt-1 text-[11px] text-ink-faint">
+              <div className="tabular mt-1 text-[11px] text-slate-400">
                 computed with {m.metadata.tools.map((t) => t.tool).join(", ")}
               </div>
             )}
           </div>
         ))}
 
-        {busy && <p className="text-[13px] text-ink-faint">Working it out…</p>}
+        {busy && (
+          <div className="flex items-center gap-2 text-[12px] text-slate-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-ping" />
+            <span>Analyzing dataset & querying statistics…</span>
+          </div>
+        )}
         {error && <ErrorNote>{error}</ErrorNote>}
         <div ref={endRef} />
       </div>
 
-      <div className={`flex gap-2 border-t border-rule py-3 ${embedded ? "" : "px-4"}`}>
+      <div className={`flex gap-2 border-t border-slate-100 py-3 ${embedded ? "" : "px-5"}`}>
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send(draft)}
           disabled={!hasDataset || busy}
-          placeholder={hasDataset ? "Ask a question" : "Upload a table first"}
-          className="flex-1 rounded border border-rule-strong px-2.5 py-1.5 text-[14px] placeholder:text-ink-faint disabled:bg-paper"
+          placeholder={hasDataset ? "Ask a question about your columns, distributions, or metrics…" : "Upload a table first"}
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600 disabled:bg-slate-50 disabled:text-slate-400"
         />
         <Button onClick={() => send(draft)} disabled={!hasDataset || busy || !draft.trim()}>
-          Ask
+          Send
         </Button>
       </div>
     </section>
