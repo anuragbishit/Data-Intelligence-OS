@@ -9,6 +9,7 @@ import AIAnalysisTrace from "../components/AIAnalysisTrace";
 import { DecisionIntelligenceDashboard } from "../components/DecisionIntelligenceDashboard";
 import { WhatIfScenario } from "../components/WhatIfScenario";
 import { LivePredictionPlayground } from "../components/LivePredictionPlayground";
+import { DeployApiPanel } from "../components/DeployApiPanel";
 import { VisualEDA } from "../components/VisualEDA";
 import { QualityChecks, VerdictBadge } from "../components/Verdict";
 import { SkeletonCard } from "../components/Skeleton";
@@ -44,6 +45,7 @@ export function RunDetail() {
   const [chatDatasetId, setChatDatasetId] = useState<string | null>(null);
   const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
   const [scenarioHistory, setScenarioHistory] = useState<ScenarioResult[]>([]);
+  const [showDeployApi, setShowDeployApi] = useState(true);
 
   useEffect(() => {
     const loadRun = async () => {
@@ -161,7 +163,18 @@ export function RunDetail() {
           <span className="tabular text-[12px] text-ink-faint">{out.plan.task_type}</span>
         )}
         {run.status === "succeeded" && (
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setShowDeployApi(true);
+                setTimeout(() => {
+                  document.getElementById("decision-deploy-api")?.scrollIntoView({ behavior: "smooth" });
+                }, 50);
+              }}
+              className="rounded bg-ink px-3 py-1.5 text-[13px] font-medium text-surface hover:opacity-90 transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <span>⚡</span> {showDeployApi ? "Live REST API" : "Deploy as API"}
+            </button>
             <a
               href={api.exportUrl(run.id)}
               className="rounded border border-rule-strong px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-paper"
@@ -459,6 +472,17 @@ export function RunDetail() {
           )}
         </div>
       </div>
+
+      {run.status === "succeeded" && (out?.training?.features_used.length ?? 0) > 0 && showDeployApi && (
+        <div id="decision-deploy-api" className="mt-7">
+          <DeployApiPanel
+            runId={run.id}
+            targetColumn={out?.plan?.target_column ?? "Target"}
+            taskType={out?.plan?.task_type ?? "classification"}
+            onClose={() => setShowDeployApi(false)}
+          />
+        </div>
+      )}
 
       {run.status === "succeeded" && (out?.training?.features_used.length ?? 0) > 0 && (
         <div id="decision-live-prediction" className="mt-7">
