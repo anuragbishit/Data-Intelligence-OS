@@ -129,6 +129,11 @@ def predict_single(
     display_pred = str(pred_val)
     if task_type == "regression" and isinstance(pred_val, (int, float)):
         display_pred = f"{pred_val:,.2f}"
+    elif task_type == "classification":
+        if str(pred_val).strip() in {"0", "1"}:
+            display_pred = f"Class {pred_val}"
+        else:
+            display_pred = str(pred_val)
 
     probabilities = None
     confidence = None

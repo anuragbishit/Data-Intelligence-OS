@@ -11,6 +11,8 @@ export default defineConfig({
     proxy: {
       // Same-origin in dev, so no CORS and no base-URL juggling.
       "/api": { target: "http://api:8000", changeOrigin: true },
+      "/docs": { target: "http://api:8000", changeOrigin: true },
+      "/openapi.json": { target: "http://api:8000", changeOrigin: true },
     },
   },
 });
