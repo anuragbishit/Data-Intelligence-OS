@@ -149,35 +149,41 @@ export function RunDetail() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-[12px] text-slate-500 mb-2">
-        <Link to={`/projects/${run.project_id}`} className="hover:text-slate-900 transition-colors flex items-center gap-1 font-medium">
+        <Link to={`/projects/${run.project_id}`} className="hover:text-slate-900 transition-colors flex items-center gap-1 font-semibold text-slate-600">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           Back to Project
         </Link>
-        <span>/</span>
-        <span className="font-semibold text-slate-800 truncate">Run {run.id.slice(0, 8)}</span>
+        <span className="text-slate-300">/</span>
+        <span className="font-bold text-slate-900 truncate">Run {run.id.slice(0, 8)}</span>
       </div>
 
       {/* Main Header */}
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200">
-        <div className="flex flex-wrap items-center gap-3.5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-teal-400 shadow-sm">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-200/80">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-teal-400 shadow-md">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-[24px] sm:text-[26px] font-extrabold tracking-tight text-slate-900">
+            <div className="flex items-center gap-3">
+              <h1 className="text-[26px] sm:text-[30px] font-extrabold tracking-tight text-slate-900">
                 {out?.plan?.target_column ?? "Analysis"}
               </h1>
               {quality && <VerdictBadge verdict={quality.verdict} />}
             </div>
-            <div className="flex items-center gap-2 text-[12px] text-slate-500">
-              <span className="capitalize font-semibold text-slate-700">{out?.plan?.task_type ?? "Autonomous model"}</span>
+            <div className="flex items-center gap-2 text-[12px] text-slate-500 mt-1">
+              <span className="capitalize font-bold text-slate-700">{out?.plan?.task_type ?? "Autonomous model"}</span>
               <span>·</span>
-              <span>Run ID: <code className="font-mono text-slate-600">{run.id.slice(0, 8)}</code></span>
+              <span>Run ID: <code className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md">{run.id.slice(0, 8)}</code></span>
+              {quality && (
+                <>
+                  <span>·</span>
+                  <span className="font-semibold text-teal-700">Gate: {quality.gate_metric} {quality.gate_value.toFixed(4)}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -191,27 +197,27 @@ export function RunDetail() {
                   document.getElementById("decision-deploy-api")?.scrollIntoView({ behavior: "smooth" });
                 }, 50);
               }}
-              className="rounded-lg bg-teal-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-teal-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="rounded-xl bg-teal-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-teal-700 shadow-md shadow-teal-600/20 hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <span>⚡</span> {showDeployApi ? "Live REST API" : "Deploy as API"}
             </button>
             <a
               href={api.notebookUrl(run.id)}
-              className="rounded-lg border border-teal-500/30 bg-teal-50/60 px-3 py-2 text-[13px] font-medium text-teal-800 hover:bg-teal-100 transition-colors flex items-center gap-1.5"
+              className="rounded-xl border border-teal-500/30 bg-teal-50/70 px-3.5 py-2 text-[13px] font-bold text-teal-800 hover:bg-teal-100 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
               <span>📓</span>
               <span>Notebook (.ipynb)</span>
             </a>
             <a
               href={api.exportUrl(run.id)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
               <span>📦</span>
               <span>Code & Model</span>
             </a>
             <a
               href={api.reportUrl(run.id)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
               <span>📄</span>
               <span>Report</span>
@@ -220,52 +226,117 @@ export function RunDetail() {
         )}
       </div>
 
+      {/* Quick Jump Navigation Bar */}
+      {run.status === "succeeded" && (
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm p-1.5 shadow-2xs">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 pl-2 pr-1">Jump to:</span>
+          <button
+            onClick={() => {
+              setShowDeployApi(true);
+              setTimeout(() => document.getElementById("decision-deploy-api")?.scrollIntoView({ behavior: "smooth" }), 30);
+            }}
+            className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-teal-700 bg-teal-50 border border-teal-200/60 hover:bg-teal-100 transition-colors cursor-pointer"
+          >
+            ⚡ Live REST API
+          </button>
+          <button
+            onClick={() => document.getElementById("decision-live-prediction")?.scrollIntoView({ behavior: "smooth" })}
+            className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            🎮 Playground
+          </button>
+          <button
+            onClick={() => document.getElementById("decision-what-if")?.scrollIntoView({ behavior: "smooth" })}
+            className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            🔮 What-If Simulator
+          </button>
+          {dataHealth && (
+            <button
+              onClick={() => document.getElementById("decision-data-health")?.scrollIntoView({ behavior: "smooth" })}
+              className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              🏥 Data Health
+            </button>
+          )}
+          {chatDatasetId && (
+            <button
+              onClick={() => document.getElementById("decision-eda-charts")?.scrollIntoView({ behavior: "smooth" })}
+              className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              📊 Visual EDA
+            </button>
+          )}
+          <button
+            onClick={() => document.getElementById("decision-ai-trace")?.scrollIntoView({ behavior: "smooth" })}
+            className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            🧠 AI Trace
+          </button>
+          {out?.explanation && (
+            <button
+              onClick={() => document.getElementById("decision-feature-evidence")?.scrollIntoView({ behavior: "smooth" })}
+              className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              🎯 Feature Importance
+            </button>
+          )}
+          {run.experiments.length > 0 && (
+            <button
+              onClick={() => document.getElementById("decision-model-evidence")?.scrollIntoView({ behavior: "smooth" })}
+              className="rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              🏆 Models Compared
+            </button>
+          )}
+        </div>
+      )}
+
       {run.status === "failed" && (
         <div className="mt-4"><ErrorNote>{run.error ?? "The run did not complete."}</ErrorNote></div>
       )}
 
       {!!out?.training?.leaked_features?.length && (
-        <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3.5 shadow-2xs">
-          <p className="text-[13px] font-bold text-amber-900 flex items-center gap-1.5">
-            <span>🛡️</span> Columns removed for restating the target (Data Leakage Prevented)
+        <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50/80 px-4 py-4 shadow-2xs">
+          <p className="text-[13px] font-bold text-amber-900 flex items-center gap-2">
+            <span className="text-[16px]">🛡️</span>
+            <span>Columns removed for restating the target (Leakage Shield™ Triggered)</span>
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2.5 space-y-1">
             {out.training.leaked_features.map((f) => (
               <li key={f.column} className="text-[13px] leading-snug text-amber-800">
-                <span className="tabular font-semibold text-amber-950">{f.column}</span> — {f.reason}
+                <span className="tabular font-bold text-amber-950">{f.column}</span> — {f.reason}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[12px] leading-snug text-amber-700">
-            Scores below come from a model trained without them. Left in, they
-            would have produced a perfect score and learned nothing.
+          <p className="mt-2.5 text-[12px] leading-snug text-amber-700">
+            Scores below come from a candidate model trained without these columns. Left in, they would have produced a deceptive 100% score while learning nothing real.
           </p>
         </div>
       )}
 
       {out?.training?.additive_leakage && (
-        <div className="mt-5 rounded-xl border border-rose-300 bg-rose-50/80 px-4 py-3.5 shadow-2xs">
-          <p className="text-[13px] font-bold text-rose-900 flex items-center gap-1.5">
-            <span>⚠️</span> The target is derived from its own columns
+        <div className="mt-5 rounded-2xl border border-rose-300 bg-rose-50/80 px-4 py-4 shadow-2xs">
+          <p className="text-[13px] font-bold text-rose-900 flex items-center gap-2">
+            <span className="text-[16px]">⚠️</span>
+            <span>The target is mathematically derived from its own columns</span>
           </p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-rose-800">
             {out.training.additive_leakage.reason}
           </p>
-          <p className="tabular mt-2 text-[12px] font-mono text-rose-900">
+          <p className="tabular mt-2 text-[12px] font-mono text-rose-900 bg-rose-100/60 p-2 rounded-lg">
             {out.training.additive_leakage.contributors
               .map((c) => `${c.column} ×${c.coefficient.toFixed(3)}`)
               .join("  ·  ")}
           </p>
           <p className="mt-2 text-[12px] leading-snug text-rose-700">
-            Coefficients near 1.0 mean the target is a sum. The score below is
-            real but meaningless — remove the component columns, or predict
-            something not derived from them.
+            Coefficients near 1.0 indicate the target is an exact mathematical sum. Remove the component columns or select a different non-derived target.
           </p>
         </div>
       )}
 
       {out?.training?.sampled_from && (
-        <p className="tabular mt-4 text-[12px] text-slate-500">
+        <p className="tabular mt-4 text-[12px] text-slate-500 font-medium">
           Sampled {out.training.n_train + out.training.n_test} rows from{" "}
           {out.training.sampled_from.toLocaleString()} to keep the run interactive.
         </p>
@@ -291,19 +362,19 @@ export function RunDetail() {
       </div>
 
       {out?.summary && (
-        <div id="decision-analysis-summary" className="rise mt-6 rounded-xl border border-teal-500/30 bg-teal-50/40 p-5 shadow-2xs">
-          <div className="flex items-center gap-2 mb-1.5 text-[12px] font-bold uppercase tracking-wider text-teal-800">
+        <div id="decision-analysis-summary" className="rise mt-6 rounded-2xl border border-teal-500/30 bg-teal-50/50 backdrop-blur-sm p-6 shadow-xs">
+          <div className="flex items-center gap-2 mb-2 text-[12px] font-extrabold uppercase tracking-wider text-teal-800">
             <span>✨</span>
             <span>Autonomous Executive Summary</span>
           </div>
-          <p className="text-[15px] leading-relaxed text-slate-800">
+          <p className="text-[15px] sm:text-[16px] leading-relaxed text-slate-800 font-medium">
             {out.summary}
           </p>
         </div>
       )}
 
-      <div className="mt-7 grid gap-5 lg:grid-cols-[250px_1fr]">
-        <div className="rise rise-1 space-y-5">
+      <div className="mt-7 grid gap-6 lg:grid-cols-[260px_1fr]">
+        <div className="rise rise-1 space-y-6">
           <Panel title="How it ran">
             <RunTrace steps={out?.steps ?? []} />
           </Panel>
@@ -312,26 +383,26 @@ export function RunDetail() {
             <Panel
               title="Cleaned first"
               aside={
-                <span className="tabular text-[12px] text-ink-faint">
+                <span className="tabular text-[12px] font-bold text-slate-500">
                   {out.cleaning.rows_before.toLocaleString()} →{" "}
                   {out.cleaning.rows_after.toLocaleString()} rows
                 </span>
               }
             >
-              <ul className="space-y-2.5">
+              <ul className="space-y-3">
                 {out.cleaning.actions.map((a) => (
-                  <li key={a.action}>
-                    <div className="text-[13px] font-medium">
+                  <li key={a.action} className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5">
+                    <div className="text-[13px] font-bold text-slate-800">
                       {CLEANING_TITLES[a.action] ?? a.action}
                       {a.rows_affected > 0 && (
-                        <span className="tabular ml-1.5 text-ink-faint">
-                          {a.rows_affected.toLocaleString()}
+                        <span className="tabular ml-1.5 text-slate-500 font-normal">
+                          ({a.rows_affected.toLocaleString()})
                         </span>
                       )}
                     </div>
-                    <p className="text-[12px] leading-snug text-ink-faint">{a.detail}</p>
+                    <p className="text-[12px] leading-snug text-slate-500 mt-0.5">{a.detail}</p>
                     {a.columns.length > 0 && (
-                      <p className="tabular text-[12px] text-ink-soft">
+                      <p className="tabular text-[11px] text-slate-700 font-mono mt-1">
                         {a.columns.join(", ")}
                       </p>
                     )}
@@ -343,17 +414,17 @@ export function RunDetail() {
 
           {out?.training && (
             <Panel title="Data used">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <Metric label="Train rows" value={out.training.n_train.toLocaleString()} />
                 <Metric label="Test rows" value={out.training.n_test.toLocaleString()} />
                 <Metric label="Features" value={out.training.features_used.length} />
                 <Metric label="Dropped" value={out.training.features_dropped.length} />
               </div>
               {out.training.features_dropped.length > 0 && (
-                <ul className="mt-3 space-y-1 border-t border-rule pt-3">
+                <ul className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
                   {out.training.features_dropped.map((d) => (
-                    <li key={d.column} className="text-[12px] leading-snug text-ink-faint">
-                      <span className="tabular text-ink-soft">{d.column}</span> — {d.reason}
+                    <li key={d.column} className="text-[12px] leading-snug text-slate-500">
+                      <span className="tabular font-semibold text-slate-800">{d.column}</span> — {d.reason}
                     </li>
                   ))}
                 </ul>
@@ -362,7 +433,7 @@ export function RunDetail() {
           )}
         </div>
 
-        <div className="rise rise-2 space-y-5">
+        <div className="rise rise-2 space-y-6">
           {out?.explanation && (
             <div id="decision-feature-evidence">
               <Panel title="What drove the predictions">
@@ -376,16 +447,16 @@ export function RunDetail() {
               <Panel
                 title="Quality checks"
                 aside={
-                  <span className="tabular text-[12px] text-ink-faint">
+                  <span className="tabular text-[12px] font-bold text-teal-700">
                     {quality.gate_metric} {quality.gate_value?.toFixed(4)}
                   </span>
                 }
               >
                 <QualityChecks quality={quality} />
                 {quality.dead_features.length > 0 && (
-                  <p className="mt-3 border-t border-rule pt-3 text-[12px] leading-snug text-ink-faint">
+                  <p className="mt-3 border-t border-slate-100 pt-3 text-[12px] leading-snug text-slate-500">
                     Contributing almost nothing: {" "}
-                    <span className="tabular">{quality.dead_features.join(", ")}</span>
+                    <span className="tabular font-mono text-slate-700">{quality.dead_features.join(", ")}</span>
                   </p>
                 )}
               </Panel>
@@ -396,12 +467,12 @@ export function RunDetail() {
             <Panel
               title="Decision"
               aside={
-                <span className="tabular text-[12px] text-ink-faint">
+                <span className="tabular text-[12px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
                   {ACTION_COPY[out.reflection.action] ?? out.reflection.action}
                 </span>
               }
             >
-              <p className="text-[14px] leading-relaxed text-ink-soft">
+              <p className="text-[14px] leading-relaxed text-slate-700 font-medium">
                 {out.reflection.reasoning}
               </p>
             </Panel>
@@ -411,41 +482,41 @@ export function RunDetail() {
             <Panel
               title="Attempts"
               aside={
-                <span className="text-[11px] text-ink-faint">
-                  retries are judged on the gate metric
+                <span className="text-[11px] font-semibold text-slate-400">
+                  judged on gate metric
                 </span>
               }
             >
               <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint">
-                    <th className="pb-1.5 font-medium min-w-[50px]">Round</th>
-                    <th className="pb-1.5 font-medium min-w-[100px]">Model</th>
-                    <th className="pb-1.5 font-medium min-w-[150px]">Excluded</th>
-                    <th className="pb-1.5 text-right font-medium min-w-[80px]">Decided on</th>
-                    <th className="pb-1.5 text-right font-medium min-w-[80px]">Headline</th>
+                  <tr className="text-left text-[11px] uppercase font-bold tracking-wider text-slate-400">
+                    <th className="pb-2 font-bold min-w-[50px]">Round</th>
+                    <th className="pb-2 font-bold min-w-[100px]">Model</th>
+                    <th className="pb-2 font-bold min-w-[150px]">Excluded</th>
+                    <th className="pb-2 text-right font-bold min-w-[80px]">Decided on</th>
+                    <th className="pb-2 text-right font-bold min-w-[80px]">Headline</th>
                   </tr>
                 </thead>
-                <tbody className="tabular">
+                <tbody className="tabular divide-y divide-slate-100">
                   {attempts.map((a) => (
-                    <tr key={a.round} className="border-t border-rule">
-                      <td className="py-1.5">{a.round}</td>
-                      <td className="py-1.5">{a.best_model}</td>
-                      <td className="py-1.5 text-ink-faint">
+                    <tr key={a.round} className="hover:bg-slate-50/50">
+                      <td className="py-2 font-semibold text-slate-800">{a.round}</td>
+                      <td className="py-2 font-bold text-slate-900">{a.best_model}</td>
+                      <td className="py-2 text-slate-500">
                         {a.excluded_features.length ? a.excluded_features.join(", ") : "—"}
                       </td>
-                      <td className="py-1.5 text-right">
+                      <td className="py-2 text-right font-bold text-teal-700">
                         {a.gate_value != null ? (
                           <>
-                            <span className="text-ink-faint">{a.gate_metric} </span>
+                            <span className="text-slate-400 font-normal">{a.gate_metric} </span>
                             {a.gate_value.toFixed(4)}
                           </>
                         ) : (
                           "—"
                         )}
                       </td>
-                      <td className="py-1.5 text-right text-ink-faint">
+                      <td className="py-2 text-right text-slate-500">
                         {a.primary_metric} {a.primary_metric_value?.toFixed(4)}
                       </td>
                     </tr>
@@ -462,28 +533,28 @@ export function RunDetail() {
               <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint">
-                    <th className="pb-1.5 font-medium min-w-[120px]">Model</th>
-                    <th className="pb-1.5 text-right font-medium min-w-[80px]">Metric</th>
-                    <th className="pb-1.5 text-right font-medium min-w-[80px]">Seconds</th>
+                  <tr className="text-left text-[11px] uppercase font-bold tracking-wider text-slate-400">
+                    <th className="pb-2 font-bold min-w-[120px]">Model</th>
+                    <th className="pb-2 text-right font-bold min-w-[80px]">Metric</th>
+                    <th className="pb-2 text-right font-bold min-w-[80px]">Train Time</th>
                   </tr>
                 </thead>
-                <tbody className="tabular">
+                <tbody className="tabular divide-y divide-slate-100">
                   {run.experiments.map((e) => (
-                    <tr key={e.model_name} className="border-t border-rule">
-                      <td className="py-1.5">
+                    <tr key={e.model_name} className="hover:bg-slate-50/50">
+                      <td className="py-2 font-semibold text-slate-800">
                         {e.model_name}
                         {e.is_selected && (
-                          <span className="ml-2 rounded bg-verified-wash px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-verified">
-                            chosen
+                          <span className="ml-2 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-800 shadow-2xs">
+                            ★ Selected
                           </span>
                         )}
                       </td>
-                      <td className="py-1.5 text-right">
+                      <td className="py-2 text-right font-bold text-slate-900">
                         {e.primary_metric} {e.primary_metric_value?.toFixed(4)}
                       </td>
-                      <td className="py-1.5 text-right text-ink-faint">
-                        {e.train_seconds?.toFixed(2)}
+                      <td className="py-2 text-right text-slate-500">
+                        {e.train_seconds?.toFixed(2)}s
                       </td>
                     </tr>
                   ))}
@@ -496,7 +567,7 @@ export function RunDetail() {
 
           {out?.plan?.rationale && (
             <Panel title="Why this target">
-              <p className="text-[14px] leading-relaxed text-ink-soft">{out.plan.rationale}</p>
+              <p className="text-[14px] leading-relaxed text-slate-700 font-medium">{out.plan.rationale}</p>
             </Panel>
           )}
         </div>
